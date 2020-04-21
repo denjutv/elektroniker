@@ -2,20 +2,25 @@ const execa = require( "execa" );
 
 class Elektroniker {
   constructor() {
-
+    this.subprocess = null;
   }
 
   async run( ) {
     this.parseArgv();
     this.parseConfig();
 
+    this.registerExitHandler();
+
     // run before start hook
     this.executeHook( this.config.onBeforeStart );
 
     // start application
-    const subprocess = execa( "electron", [this.config.entry].concat(this.config.args) );
+    this.startApplication();
 
+    // init watcher
+    this.startWatcher();
 
+    await this.subprocess;
   }
 
   parseArgv( ) {
@@ -57,6 +62,24 @@ class Elektroniker {
     this.config = Object.assign( {}, defaultConfig, config );
   }
 
+  registerExitHandler() {
+    //do something when app is closing
+    process.on('exit', this.exitHandler.bind(this,{event:"exit"}));
+
+    //catches ctrl+c event
+    process.on('SIGINT', this.exitHandler.bind(this, {event:"SIGINT"}));
+
+    // catches "kill pid" (for example: nodemon restart)
+    process.on('SIGUSR1', this.exitHandler.bind(this, {event:"SIGUSR1"}));
+    process.on('SIGUSR2', this.exitHandler.bind(this, {event:"SIGUSR2"}));
+  }
+
+  exitHandler( event ) {
+    console.log( event );
+
+    this.killApplication();
+  }
+
   async executeHook( hook ) {
     const type = typeof hook;
     
@@ -78,6 +101,36 @@ class Elektroniker {
         console.log(stdoutObj);
         break;
     }
+  }
+
+  startApplication() {
+    console.log("start application");
+    this.subprocess = execa( "electron", [this.config.entry].concat(this.config.args) );
+    // this.subprocess.stdout.pipe(process.stdout);
+  }
+
+  killApplication() {
+    console.log("kill application");
+    if( this.subprocess && !this.subprocess.killed ) {
+      this.subprocess.kill();
+    }
+  }
+
+  startWatcher() {
+    const chokidar = require('chokidar');
+ 
+  // init chokidar
+  chokidar.watch( this.config.watchPath, {ignoreInitial:true} ).on( "all", (event, path) => {
+
+    if( ["add","change","unlink"].includes( event ) ) {
+      console.log("restart", event, path);
+      this.killApplication();
+
+      this.executeHook( this.config.onMainChange );
+
+      this.startApplication();
+    }
+  });
   }
 }
 
