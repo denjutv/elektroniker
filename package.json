@@ -29,7 +29,9 @@
     "chokidar": "^3.3.1",
     "execa": "^4.0.0",
     "findup-sync": "^4.0.0",
-    "minimist": "^1.2.5"
+    "minimist": "^1.2.5",
+    "portfinder": "^1.0.25",
+    "socket.io": "^2.3.0"
   },
   "peerDependencies": {
     "electron": "^8.2.3"

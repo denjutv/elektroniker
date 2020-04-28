@@ -4,6 +4,9 @@ class Elektroniker {
   constructor() {
     this.subprocess = null;
     this.watchers = [];
+    
+    this.server = null;
+    this.io = null;
   }
 
   async run( ) {
@@ -14,6 +17,8 @@ class Elektroniker {
 
     // run before start hook
     this.executeHook( this.config.onBeforeStart );
+
+    this.startWebsockets();
 
     // start application
     this.startApplication();
@@ -75,9 +80,15 @@ class Elektroniker {
     process.on("SIGUSR2", this.exitHandler.bind(this, {event:"SIGUSR2"}));
   }
 
-  exitHandler( event ) {
+  async exitHandler( event ) {
     console.log( event );
 
+    // close webserver
+    const util = require( "util" );
+    const closeServerAsync = util.promisify( this.server.close.bind(this.server) );
+    await closeServerAsync();
+
+    // close watcher
     this.watchers.forEach( watchEntry => {
       watchEntry.watcher.unwatch(watchEntry.path); // comment this out and process will hang on OSX
       watchEntry.watcher.close();
@@ -132,6 +143,22 @@ class Elektroniker {
     }
   }
 
+  async startWebsockets() {
+    const portfinder = require("portfinder");
+    this.port = await portfinder.getPortPromise();
+
+    this.server = require("http").createServer();
+    this.io = require("socket.io")(this.server);
+    this.io.on("connection", client => {
+
+      console.log( "frontend connected" );
+      // this.frontends.push( client );
+      // client.on("event", data => { /* … */ });
+      // client.on("disconnect", () => { /* … */ });
+    });
+    this.server.listen(this.port);
+  }
+
   startWatcher() {
     const typeOfPath = typeof this.config.watchPath;
 
@@ -153,13 +180,13 @@ class Elektroniker {
     console.log( `start watching main (${watchPath})` );
 
     const watcher =chokidar.watch( watchPath, {ignoreInitial:true} );
-    watcher.on( "all", (event, path) => {
+    watcher.on( "all", async (event, path) => {
   
       if( ["add","change","unlink"].includes( event ) ) {
         console.log("restart", event, path);
         this.killApplication();
 
-        this.executeHook( this.config.onMainChange );
+        await this.executeHook( this.config.onMainChange );
 
         this.startApplication();
       }
@@ -173,12 +200,15 @@ class Elektroniker {
     console.log( "start watching render" );
     const watcher = chokidar.watch( this.config.watchPath.render, {ignoreInitial:true} );
     
-    watcher.on( "all", (event, path) => {
+    watcher.on( "all", async (event, path) => {
   
       if( ["add","change","unlink"].includes( event ) ) {
         console.log("frontend", event, path);
 
-        this.executeHook( this.config.onRenderChange );
+        await this.executeHook( this.config.onRenderChange );
+
+        // broadcast to all connected sockets
+        io.emit( "reload" );
       }
     });
 
