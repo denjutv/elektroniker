@@ -4,7 +4,7 @@
   "description": "Development tool for electron. Restarts application and frontend separately on changes.",
   "main": "src/elektroniker.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prettier": "prettier --trailing-comma none --write \"src/**/*.{js,jsx,json}\""
   },
   "bin": {
     "elektroniker": "./src/index.js"
@@ -35,5 +35,10 @@
   },
   "peerDependencies": {
     "electron": "^8.2.3"
+  },
+  "devDependencies": {
+    "husky": "^4.2.5",
+    "lint-staged": "^10.2.0",
+    "prettier": "^2.0.5"
   }
 }

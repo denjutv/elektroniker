@@ -1,22 +1,22 @@
-const execa = require( "execa" );
+const execa = require("execa");
 
 class Elektroniker {
   constructor() {
     this.subprocess = null;
     this.watchers = [];
-    
+
     this.server = null;
     this.io = null;
   }
 
-  async run( ) {
+  async run() {
     this.parseArgv();
     this.parseConfig();
 
     this.registerExitHandler();
 
     // run before start hook
-    this.executeHook( this.config.onBeforeStart );
+    this.executeHook(this.config.onBeforeStart);
 
     this.startWebsockets();
 
@@ -29,92 +29,92 @@ class Elektroniker {
     await this.subprocess;
   }
 
-  parseArgv( ) {
-    const argv = require('minimist')(process.argv.slice(2));
+  parseArgv() {
+    const argv = require("minimist")(process.argv.slice(2));
 
-    const defaultArgv = {
-    };
+    const defaultArgv = {};
 
-    this.argv = Object.assign( {}, defaultArgv, argv );
+    this.argv = Object.assign({}, defaultArgv, argv);
   }
 
-  parseConfig( ) {
-    const path = require( "path" );
+  parseConfig() {
+    const path = require("path");
     const defaultConfig = {
-      entry: this.argv._.length ? this.argv._[0] : "./src/index.js",  // path to entry file
-      args: [],                                                       // array of command line arguments for electron
-      watchPath: "./src",                                             // single string || object { main, render }
-      onBeforeStart: null,                                            // function (return promise) || string || object { command, args }
+      entry: this.argv._.length ? this.argv._[0] : "./src/index.js", // path to entry file
+      args: [], // array of command line arguments for electron
+      watchPath: "./src", // single string || object { main, render }
+      onBeforeStart: null, // function (return promise) || string || object { command, args }
       onEnd: null,
       onMainChange: null,
       onRenderChange: null
     };
 
     let configPath = "";
-    
-    if( this.argv.config ) {
-      configPath = path.join( process.cwd(), this.argv.config );
-    }
-    else {
-      const findup = require( "findup-sync" );
-      const findupPath = findup( "elektroniker.config.js" );
-      if( findupPath ) {
+
+    if (this.argv.config) {
+      configPath = path.join(process.cwd(), this.argv.config);
+    } else {
+      const findup = require("findup-sync");
+      const findupPath = findup("elektroniker.config.js");
+      if (findupPath) {
         configPath = path.resolve(findupPath);
       }
     }
 
-    const config = configPath ? require( configPath ) : {};
+    const config = configPath ? require(configPath) : {};
 
-    this.config = Object.assign( {}, defaultConfig, config );
+    this.config = Object.assign({}, defaultConfig, config);
   }
 
   registerExitHandler() {
     //do something when app is closing
-    process.on("exit", this.exitHandler.bind(this,{event:"exit"}));
+    process.on("exit", this.exitHandler.bind(this, { event: "exit" }));
 
     //catches ctrl+c event
-    process.on("SIGINT", this.exitHandler.bind(this, {event:"SIGINT"}));
+    process.on("SIGINT", this.exitHandler.bind(this, { event: "SIGINT" }));
 
     // catches "kill pid" (for example: nodemon restart)
-    process.on("SIGUSR1", this.exitHandler.bind(this, {event:"SIGUSR1"}));
-    process.on("SIGUSR2", this.exitHandler.bind(this, {event:"SIGUSR2"}));
+    process.on("SIGUSR1", this.exitHandler.bind(this, { event: "SIGUSR1" }));
+    process.on("SIGUSR2", this.exitHandler.bind(this, { event: "SIGUSR2" }));
   }
 
-  async exitHandler( event ) {
-    console.log( event );
+  async exitHandler(event) {
+    console.log(event);
 
     // close webserver
-    const util = require( "util" );
-    const closeServerAsync = util.promisify( this.server.close.bind(this.server) );
+    const util = require("util");
+    const closeServerAsync = util.promisify(
+      this.server.close.bind(this.server)
+    );
     await closeServerAsync();
 
     // close watcher
-    this.watchers.forEach( watchEntry => {
+    this.watchers.forEach((watchEntry) => {
       watchEntry.watcher.unwatch(watchEntry.path); // comment this out and process will hang on OSX
       watchEntry.watcher.close();
-    })
+    });
 
     this.killApplication();
   }
 
-  async executeHook( hook ) {
+  async executeHook(hook) {
     const type = typeof hook;
-    
+
     // in case hook is null, which also resolves in type === "object"
-    if( !hook ) {
+    if (!hook) {
       return;
     }
 
-    switch( type ) {
+    switch (type) {
       case "function":
         await hook();
         break;
       case "string":
-        const {stdoutStr} = await execa( hook );
+        const { stdoutStr } = await execa(hook);
         console.log(stdoutStr);
         break;
       case "object":
-        const {stdoutObj} = await execa( hook.command, hook.args );
+        const { stdoutObj } = await execa(hook.command, hook.args);
         console.log(stdoutObj);
         break;
     }
@@ -122,24 +122,24 @@ class Elektroniker {
 
   startApplication() {
     console.log("start application");
-    this.subprocess = execa( "electron", [this.config.entry].concat(this.config.args) );
+    this.subprocess = execa(
+      "electron",
+      [this.config.entry].concat(this.config.args)
+    );
     this.subprocess.stdout.pipe(process.stdout);
   }
 
   killApplication() {
     console.log("kill application");
-    if( this.subprocess && !this.subprocess.killed ) {
-      
-      if( process.platform !== "win32" ) {
+    if (this.subprocess && !this.subprocess.killed) {
+      if (process.platform !== "win32") {
         this.subprocess.kill();
-      }
-      else if( this.subprocess._handle ) {
+      } else if (this.subprocess._handle) {
         // workaround, because subprocess.kill doesn't work
         // https://stackoverflow.com/questions/23706055/why-can-i-not-kill-my-child-process-in-nodejs-on-windows
         const spawn = require("child_process").spawn;
         spawn("taskkill", ["/pid", this.subprocess._handle.pid, "/f", "/t"]);
       }
-
     }
   }
 
@@ -149,9 +149,8 @@ class Elektroniker {
 
     this.server = require("http").createServer();
     this.io = require("socket.io")(this.server);
-    this.io.on("connection", client => {
-
-      console.log( "frontend connected" );
+    this.io.on("connection", (client) => {
+      console.log("frontend connected");
       // this.frontends.push( client );
       // client.on("event", data => { /* … */ });
       // client.on("disconnect", () => { /* … */ });
@@ -163,56 +162,58 @@ class Elektroniker {
     const typeOfPath = typeof this.config.watchPath;
 
     // init chokidar
-    if( typeOfPath === "string" ) {
-      this._watchMain( this.config.watchPath );
-    }
-    else if( typeOfPath === "object" && this.config.watchPath.main && this.config.watchPath.render ) {
-      this._watchMain( this.config.watchPath.main );
+    if (typeOfPath === "string") {
+      this._watchMain(this.config.watchPath);
+    } else if (
+      typeOfPath === "object" &&
+      this.config.watchPath.main &&
+      this.config.watchPath.render
+    ) {
+      this._watchMain(this.config.watchPath.main);
       this._watchRender();
-    }
-    else {
+    } else {
       throw "Invalid watch path";
     }
   }
 
-  _watchMain( watchPath ) {
+  _watchMain(watchPath) {
     const chokidar = require("chokidar");
-    console.log( `start watching main (${watchPath})` );
+    console.log(`start watching main (${watchPath})`);
 
-    const watcher =chokidar.watch( watchPath, {ignoreInitial:true} );
-    watcher.on( "all", async (event, path) => {
-  
-      if( ["add","change","unlink"].includes( event ) ) {
+    const watcher = chokidar.watch(watchPath, { ignoreInitial: true });
+    watcher.on("all", async (event, path) => {
+      if (["add", "change", "unlink"].includes(event)) {
         console.log("restart", event, path);
         this.killApplication();
 
-        await this.executeHook( this.config.onMainChange );
+        await this.executeHook(this.config.onMainChange);
 
         this.startApplication();
       }
     });
 
-    this.watchers.push( {watcher, path: watchPath} );
+    this.watchers.push({ watcher, path: watchPath });
   }
 
   _watchRender() {
     const chokidar = require("chokidar");
-    console.log( "start watching render" );
-    const watcher = chokidar.watch( this.config.watchPath.render, {ignoreInitial:true} );
-    
-    watcher.on( "all", async (event, path) => {
-  
-      if( ["add","change","unlink"].includes( event ) ) {
+    console.log("start watching render");
+    const watcher = chokidar.watch(this.config.watchPath.render, {
+      ignoreInitial: true
+    });
+
+    watcher.on("all", async (event, path) => {
+      if (["add", "change", "unlink"].includes(event)) {
         console.log("frontend", event, path);
 
-        await this.executeHook( this.config.onRenderChange );
+        await this.executeHook(this.config.onRenderChange);
 
         // broadcast to all connected sockets
-        io.emit( "reload" );
+        io.emit("reload");
       }
     });
 
-    this.watchers.push({watcher, path: this.config.watchPath.render });
+    this.watchers.push({ watcher, path: this.config.watchPath.render });
   }
 }
 
