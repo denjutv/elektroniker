@@ -106,31 +106,41 @@ class Elektroniker {
   startApplication() {
     console.log("start application");
     this.subprocess = execa( "electron", [this.config.entry].concat(this.config.args) );
-    // this.subprocess.stdout.pipe(process.stdout);
+    this.subprocess.stdout.pipe(process.stdout);
   }
 
   killApplication() {
     console.log("kill application");
     if( this.subprocess && !this.subprocess.killed ) {
-      this.subprocess.kill();
+      
+      if( process.platform !== "win32" ) {
+        this.subprocess.kill();
+      }
+      else if( this.subprocess._handle ) {
+        // workaround, because subprocess.kill doesn't work
+        // https://stackoverflow.com/questions/23706055/why-can-i-not-kill-my-child-process-in-nodejs-on-windows
+        const spawn = require("child_process").spawn;
+        spawn("taskkill", ["/pid", this.subprocess._handle.pid, "/f", "/t"]);
+      }
+
     }
   }
 
   startWatcher() {
     const chokidar = require('chokidar');
  
-  // init chokidar
-  chokidar.watch( this.config.watchPath, {ignoreInitial:true} ).on( "all", (event, path) => {
+    // init chokidar
+    chokidar.watch( this.config.watchPath, {ignoreInitial:true} ).on( "all", (event, path) => {
 
-    if( ["add","change","unlink"].includes( event ) ) {
-      console.log("restart", event, path);
-      this.killApplication();
+      if( ["add","change","unlink"].includes( event ) ) {
+        console.log("restart", event, path);
+        this.killApplication();
 
-      this.executeHook( this.config.onMainChange );
+        this.executeHook( this.config.onMainChange );
 
-      this.startApplication();
-    }
-  });
+        this.startApplication();
+      }
+    });
   }
 }
 
