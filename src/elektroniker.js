@@ -18,7 +18,7 @@ class Elektroniker {
     // run before start hook
     this.executeHook(this.config.onBeforeStart);
 
-    this.startWebsockets();
+    await this.startWebsockets();
 
     // start application
     this.startApplication();
@@ -124,7 +124,9 @@ class Elektroniker {
     console.log("start application");
     this.subprocess = execa(
       "electron",
-      [this.config.entry].concat(this.config.args)
+      [this.config.entry, "--elektroniker-port=" + this.port].concat(
+        this.config.args
+      )
     );
     this.subprocess.stdout.pipe(process.stdout);
   }
@@ -217,4 +219,28 @@ class Elektroniker {
   }
 }
 
-module.exports = Elektroniker;
+const { ELEKTRONIKER_GET_PORT } = require("./channel");
+
+module.exports = {
+  Elektroniker,
+  startElektroniker: (argv) => {
+    const arguments = require("minimist")(argv.slice(2));
+
+    if (arguments["elektroniker-port"]) {
+      const port = arguments["elektroniker-port"];
+
+      const { ipcMain } = require("electron");
+
+      // handle ipc message by dispatching them to the store
+      ipcMain.on(ELEKTRONIKER_GET_PORT, (event, message) => {
+        event.sender.send(ELEKTRONIKER_GET_PORT, { port });
+      });
+
+      // if( !Array.isArray(browserWindows) ) {
+      //   browserWindows = [browserWindows];
+      // }
+
+      // browserWindows.forEach( win => win.webContents.send('elektroniker-port', {port}) );
+    }
+  }
+};
