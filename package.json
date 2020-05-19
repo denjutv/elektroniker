@@ -43,7 +43,8 @@
     "findup-sync": "^4.0.0",
     "minimist": "^1.2.5",
     "portfinder": "^1.0.25",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.3.0",
+    "socket.io-client": "^2.3.0"
   },
   "peerDependencies": {
     "electron": "^8.2.3"

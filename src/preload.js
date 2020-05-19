@@ -3,7 +3,13 @@ const { ipcRenderer } = require("electron");
 const { ELEKTRONIKER_GET_PORT } = require("./channel");
 
 ipcRenderer.on(ELEKTRONIKER_GET_PORT, (event, message) => {
-  console.log(Object.assign(message, { event }));
+  const socket = require("socket.io-client")(
+    "http://localhost:" + message.port
+  );
+
+  socket.on("reload", function (data) {
+    location.reload();
+  });
 });
 
 // contextBridge.exposeInMainWorld( "startElektroniker", function() {
