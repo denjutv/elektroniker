@@ -72,12 +72,12 @@ You can configure elektroniker by creating a `elektroniker.config.js` file that 
 | :----------------: | :----------------: | :----------------: | :--------------------------------:
 | entry | string | "./src/index.js" | Entry point to electron. Can also be set as first command line argument (see [Run](#Run)).
 | args | array | [] | Command line arguments that will be passed to electron.
-| watchPath | string or object | "./src" | Ether a string to the path to be watched for changes or an object with a main and a render property. Both have to be strings of paths to your main and your render code. If watchPath is a string then a change in the watched path will always trigger a restart of the electron application. If you pass an object, a change on the main path will also restart the application. A change of the render code will only result in a reload of your BrowserWindow.
+| watchPath | string or object | "./src" | Ether a string to the path to be watched for changes or an object<br> with a main and a render property. Both have to be strings of paths to your main and your render code. If<br> watchPath is a string then a change in the watched path will always trigger a restart of the electron<br> application. If you pass an object, a change on the main path will also restart the application. A change of<br> the render code will only result in a reload of your BrowserWindow.
 | onBeforeStart | function | null | Hook that is called once before your main process is started.
 | onMainChange | function | null | Hook that is called on a change in the main process code, but before the application is restarted.
 | onRenderChange | function | null | Hook that is called on a change in the render process code, but before the window is relaoded.
 
-!All hooks can return promises.
+All hooks can return promises. In that case a restart or reload is only triggered if the promise resolves.
 
 Here is sample elektroniker.config.js file that runs a webpack build before the application start and before each reload of the frontend code.
 ```code
