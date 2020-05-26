@@ -1,6 +1,6 @@
 {
   "name": "elektroniker",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Development tool for electron. Restarts application and frontend separately on changes.",
   "main": "src/elektroniker.js",
   "scripts": {
