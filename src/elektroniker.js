@@ -224,9 +224,11 @@ const { ELEKTRONIKER_GET_PORT } = require("./channel");
 module.exports = {
   Elektroniker,
   startElektroniker: (argv) => {
+    let isRunning = false;
     const arguments = require("minimist")(argv.slice(2));
+    const isDev = require("electron-is-dev");
 
-    if (arguments["elektroniker-port"]) {
+    if (isDev && arguments["elektroniker-port"]) {
       const port = arguments["elektroniker-port"];
 
       const { ipcMain } = require("electron");
@@ -236,11 +238,9 @@ module.exports = {
         event.sender.send(ELEKTRONIKER_GET_PORT, { port });
       });
 
-      // if( !Array.isArray(browserWindows) ) {
-      //   browserWindows = [browserWindows];
-      // }
-
-      // browserWindows.forEach( win => win.webContents.send('elektroniker-port', {port}) );
+      isRunning = true;
     }
+
+    return isRunning;
   }
 };
